@@ -1,0 +1,19 @@
+
+Algorithm to recognize sigma factor binding sites.
+
+Usage:
+python SigmaFactorBindingSiteRegonition.py -sort Data/Mycoplasma_gallisepticum_CA06_2006_052_5_2P_uid172630/NC_018412.gbk Results/Mycoplasma_gallisepticum_CA06_2006_052_5_2P_uid172630.txt
+
+Algorithm: 
+
+1. For each gene in genbank file place it in a dict with the NCDNA proceeds it as the key.
+2. For each element in NCDNA find all substrings that are common between it and any of the elements of the NCDNA set. 
+3. If this element is grater than the minimul lenght requirment (minlen) add it to the set called commonsubstrings
+4. If a common substring is repeated incremnt the count of that substring
+5. Once all NCDNA elements have been compared with all others select only thoes that meet the minimum occurrances paramater (minoccurances)
+6. print commonsubstring followed by genes whose ncdna contains that substring in order of occurrances.
+
+Results: 
+
+Some of the most common substrings across a gen bank file are already identified sigma factor binding sites. Example TTAAAA in Mycoplasma gallisepticum http://www.ncbi.nlm.nih.gov/pmc/articles/PMC2258871/ 
+
