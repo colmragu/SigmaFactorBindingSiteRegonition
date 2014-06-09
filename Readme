@@ -15,5 +15,6 @@ Algorithm:
 
 Results: 
 
-Some of the most common substrings across a gen bank file are already identified sigma factor binding sites. Example housekeeping sigma factor binding site TTAAAA in Mycoplasma gallisepticum http://www.ncbi.nlm.nih.gov/pmc/articles/PMC2258871/ is one of the strongest matches found.
+Some of the most common substrings across a gen bank file are already identified sigma factor binding sites. Example housekeeping sigma factor binding site TTAAAA in Mycoplasma gallisepticum http://www.ncbi.nlm.nih.gov/pmc/articles/PMC2258871/ is one of the strongest matches found. The paper used Sequence Alignment Kernel promoter predication program to identify this sigma factor binding site.
+
 
