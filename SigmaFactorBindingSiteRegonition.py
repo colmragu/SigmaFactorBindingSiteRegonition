@@ -128,28 +128,6 @@ def sortbycommonsubstring(ncdna, commonsubstrings):
       contains_substring[i]=1
   return (tuple(contains_substring))
 
-def print_sorted_contains_note(ncdna_sort, note , outputfile):
-# ornts all genes for sorted under a ncdna key if any gene contains a given note
-  f = open(outputfile, "w")
-  matches=[]
-  for ncdna in sorted(ncdna_sort.keys(), key=len):
-    key = search_string_in_notes(note, ncdna_sort, ncdna)
-    if key != 0:
-      matches.append(ncdna)
-    else:
-      continue
-  for match in sorted(matches, key=len):
-    print (match, file=f)
-    print_element(ncdna_sort,match, f)
-  f.close()
-
-def search_string_in_notes(note, ncdna_sort, ncdna):
-  for organizm in sorted(ncdna_sort[ncdna]):
-    for gene in ncdna_sort[ncdna][organizm].keys():
-      if note.lower() in str(ncdna_sort[ncdna][organizm][gene][0]).lower():
-        return 1
-  return 0
-
 def print_element(ncdna_sort,ncdna, f):
   for gene,info in sorted(ncdna_sort[ncdna].items(), key=lambda x:x[1][1]):
       print (info, file=f)
@@ -165,13 +143,7 @@ def sortall(gb_files):
 def parse_commandline():
   help_message = "Incorrect command you need to supply a gbk file \n python sortbyNcdna.py -sort data/NC_009930.gbk outputfile \n python sortbyNcdna.py -sort data/Azospirillum_B510_uid46085/NC_013860.gbk Azospirillum_B510_uid46085.txt\n python sortbyNcdna.py -search protein data/Azospirillum_B510_uid46085/NC_013860.gbk Azospirillum_B510_uid46085.txt" 
   if len(sys.argv) > 1:
-    if sys.argv[1] == "-search":
-      gb_files = sys.argv[3:-1]
-      outputfile = sys.argv[-1]
-      search_string = sys.argv[2]
-      ncdna_sorted = sortall(gb_files)
-      print_sorted_contains_note(ncdna_sorted,search_string, outputfile)  
-    elif sys.argv[1] == "-sort":
+    if sys.argv[1] == "-sort":
       gb_files = sys.argv[2:-1]
       outputfile = sys.argv[-1]
       ncdna_sorted = sortall(gb_files)
