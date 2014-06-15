@@ -19,8 +19,12 @@ from Bio import SeqIO
 import difflib
 import pdb
 import sys
+import re
+from collections import Counter
+#Globals
+global minlen
 
-def sortbyNcdna(sortbyNCDNA, gb_file):
+def sortbyNcdna(GeneId2Ncdna, GeneId2Note, gb_file):
   scan_pos = 0
   f = open(gb_file,"r")
   ncdna_last = "S"
@@ -29,33 +33,35 @@ def sortbyNcdna(sortbyNCDNA, gb_file):
     gb_record = SeqIO.read(f, "genbank")
   except:
     print ("Skipping %s , cannot read file"%gb_file)
-    return (sortbyNCDNA) 
+    return (GeneId2Ncdna, GeneId2Note) 
   f.close()
   for feature in gb_record.features[1:]: #Select all but the first entry in gbk file
     feature = pad_gb_features(feature)
     ncdna = str(gb_record.seq[scan_pos:feature.location.start.position+1]) #ncdna = non coding dna
     if ncdna == "":
-      sortbyNCDNA = addfeaturetodict(ncdna_last,sortbyNCDNA, feature)
+      GeneId2Ncdna, GeneId2Note = addfeaturetodict(ncdna_last, GeneId2Ncdna, GeneId2Note, feature)
     else:
-      sortbyNCDNA = addfeaturetodict(ncdna,sortbyNCDNA, feature)
+      GeneId2Ncdna, GeneId2Note = addfeaturetodict(ncdna, GeneId2Ncdna, GeneId2Note, feature)
       ncdna_last= ncdna
     scan_pos = feature.location.end.position
-  return(sortbyNCDNA)
+  return(GeneId2Ncdna, GeneId2Note)
 
-def addfeaturetodict(ncdna,sortbyNCDNA, feature):
-#  pdb.set_trace()
+def addfeaturetodict(ncdna,GeneId2Ncdna, GeneId2Note, feature):
+#  
+  GeneId = feature.qualifiers["db_xref"][0]
   if not "CDS" in feature.type:
-    return(sortbyNCDNA)
+    return(GeneId2Ncdna, GeneId2Note)
 
   if feature.qualifiers.has_key("product"):
     feature.qualifiers["note"]  = str(feature.qualifiers["note"]) +  feature.qualifiers["product"][0]
 
-  if not sortbyNCDNA.has_key(ncdna):
-    sortbyNCDNA[ncdna]={}
-  if not sortbyNCDNA[ncdna].has_key(feature.qualifiers["db_xref"][0]):
-    sortbyNCDNA[ncdna][feature.qualifiers["db_xref"][0]] ={}
-  sortbyNCDNA[ncdna][feature.qualifiers["db_xref"][0]] =formatestring(feature.qualifiers["note"]  ,int (feature.location.start) ,int (feature.location.end)) #add more information
-  return(sortbyNCDNA) 
+  if not GeneId2Ncdna.has_key(GeneId):
+    GeneId2Ncdna[GeneId]=[ncdna]
+    GeneId2Note[GeneId]=formatestring(feature.qualifiers["note"]  ,int (feature.location.start) ,int (feature.location.end))
+  else:
+    GeneId2Ncdna[GeneId].append(ncdna)
+
+  return(GeneId2Ncdna, GeneId2Note) 
 
 def formatestring(note, start, end ):
   formatedString = note ,start ,end
@@ -69,57 +75,87 @@ def pad_gb_features(feature):
     feature.qualifiers["db_xref"]=["nodb_xref"]
   return feature
 
-def dictbyCommonsubstring(ncdna_sort,commonsubstrings ,outputfile):
-  dictbycommonsubstring = dict((substring,{}) for substring in commonsubstrings)
-  for substring in commonsubstrings:
-    for element in ncdna_sort.keys():
-      if substring in element:
-        dictbycommonsubstring[substring].update(ncdna_sort[element])
-  return(dictbycommonsubstring)    
+def dictbyCommonsubstring(GeneId2Ncdna, GeneId2Note,commonsubstrings ,outputfile):
+  genidByCommonsubstring = {}
 
-def printbyCommonsubstring(ncdna_sort, outputfile):
+  for gene in GeneId2Ncdna.keys():
+    for element in GeneId2Ncdna[gene]:
+      substring_match = [substring1 for substring1 in commonsubstrings if re.compile(substring1).search(element) is not None]    
+      for substring in substring_match:
+        if gene in genidByCommonsubstring.keys():
+          genidByCommonsubstring[gene].append(substring)
+        else:
+          genidByCommonsubstring[gene]=[]
+          genidByCommonsubstring[gene].append(substring)
+
+  return(genidByCommonsubstring)
+
+def dictby2Commonsubstring(GeneId2Ncdna, GeneId2Note,commonsubstrings ,outputfile):
+  GeneId2commonsubstring={}
+  dictbycommonsubstring={}
+  inv_ncdna_sort={} 
+  percent_total=len(GeneId2Ncdna.keys())
+  
+  print ("\nBuilding dict")
+  for y, gene in enumerate(GeneId2Ncdna.keys()):   
+    print ("\r".join([str(y*100/percent_total) ,"%"]),end="")
+#    print ("\r" + str(float(y*100/len(GeneId2Ncdna.keys()))) + "%",end='')
+    substring_pairs=[substring1 for substring1 in GeneId2Ncdna[gene]]
+    GeneId2commonsubstring.update({substring_pair:{} for substring_pair in substring_pairs if substring_pair not in GeneId2commonsubstring.keys()})
+    for sharedSubstrings in substring_pairs:
+        GeneId2commonsubstring[sharedSubstrings].update({gene:GeneId2Note[gene]})
+  return(GeneId2commonsubstring)
+
+def printbyCommonsubstring(GeneId2Ncdna, GeneId2Note,outputfile):
   f = open(outputfile, "w")
-  commonsubstrings = findcommonsubstrings(ncdna_sort.keys(), 5, 5)
-  dictbycommonsubstring = dictbyCommonsubstring(ncdna_sort,commonsubstrings ,outputfile)  
+  ncdna= [x for y in GeneId2Ncdna.values() for x in y]
+  commonsubstrings = findcommonsubstrings(ncdna, 5, 5)
+  genidByCommonsubstring = dictbyCommonsubstring(GeneId2Ncdna, GeneId2Note,commonsubstrings ,outputfile)   
+  dictbycommonsubstring = dictby2Commonsubstring(genidByCommonsubstring, GeneId2Note,commonsubstrings ,outputfile)
   for ncdna in sorted(dictbycommonsubstring.items(), key= lambda x:len(x[1]), reverse=True):
     print(ncdna[0], file = f)
     print_element(dictbycommonsubstring,ncdna[0],f)
 
 def print_sorted(ncdna_sort, outputfile):
   f = open(outputfile, "w")
-  commonsubstrings = findcommonsubstrings(ncdna_sort.keys(), 5, 5)
+  commonsubstrings = findcommonsubstrings(ncdna_sort.keys(), 5, 10)
   print (commonsubstrings,file = f)
   for ncdna in reversed(sorted(ncdna_sort.keys(), key= lambda x: sortbycommonsubstring(x, commonsubstrings))):
     print (ncdna, file=f)
     print_element(ncdna_sort,ncdna,f)
   f.close()
 
-def findcommonsubstrings(ncdna_keys, minlen, minoccurances):
-  commonsubstrings = {}
-  mostcommonsubstrings=[]
+def findcommonsubstrings(ncdna_keys, minlen2, minoccurances):
+  global minlen 
+  minlen = minlen2 
+  mostcommonsubstrings=[] 
   ncdna_key= sorted(ncdna_keys,reverse=True)
-  for x, key in enumerate(ncdna_keys):
-    print (len(ncdna_keys))
-    print (x)
-    for key2 in ncdna_keys[x:-1]:
-      if key == key2: 
-        continue
-      seq_matcher = difflib.SequenceMatcher(None, key, key2)
-      all_seq = seq_matcher.get_matching_blocks()
-#      pdb.set_trace()
-      for test_seq in all_seq:
-        if test_seq[2] > minlen:
-          seq = key[test_seq[0]:test_seq[0] + test_seq[2]]
-          if seq in commonsubstrings.keys():
-            commonsubstrings[seq]+=1
-          else:
-            commonsubstrings[seq]=1
+  ncdna_pairs = [(ncdna1, ncdna2) 
+                for x, ncdna1 in enumerate(ncdna_key) 
+                for ncdna2 in ncdna_key[x+1:-1] 
+                if len(ncdna1) > 10 and len(ncdna2)>10]
+  print ("Finding common substrings")
+  commonsubstrings = [element 
+                      for ncdna_pair in ncdna_pairs
+                      for element in ncdna_commonsubstrings(ncdna_pair)]
+  commonsubstrings = Counter(commonsubstrings) 
   for k in reversed(sorted(commonsubstrings.keys(), key=commonsubstrings.__getitem__)):
-    if commonsubstrings[k] >= minoccurances: 
+    if commonsubstrings[k] >= minoccurances:
       mostcommonsubstrings.append(k)
     else:
-      break      
+      break
+  mostcommonsubstrings = sorted(mostcommonsubstrings,key=len, reverse=True)
   return (mostcommonsubstrings)
+
+def ncdna_commonsubstrings(key):
+  matches =  [x for x in difflib.SequenceMatcher(None, key[0], key[1]).get_matching_blocks() if x[2]>minlen]
+  all_seq_paired = [sigmapinrowjoin( key[0][test_seq[0]:test_seq[0] + test_seq[2]] ,abs(test_seq2[2] - test_seq[0]) , key[0][test_seq2[0]:test_seq2[0] + test_seq2[2]]) 
+                    for x, test_seq in enumerate(matches) 
+                    for test_seq2 in matches[x+1:-1]]
+  return(all_seq_paired)
+
+def sigmapinrowjoin(sigma,  distance, pinrow):
+  return (".+".join([sigma, pinrow]))
 
 def sortbycommonsubstring(ncdna, commonsubstrings):
   contains_substring=[0]*len(commonsubstrings)
@@ -134,11 +170,12 @@ def print_element(ncdna_sort,ncdna, f):
   print ("", file=f)
 
 def sortall(gb_files): 
-  ncdna_sort = {}
+  GeneId2Ncdna={}
+  GeneId2Note={}
   for gb_file in gb_files:
     print(gb_file)
-    ncdna_sort = sortbyNcdna(ncdna_sort, gb_file)
-  return(ncdna_sort)
+    GeneId2Ncdna, GeneId2Note = sortbyNcdna(GeneId2Ncdna, GeneId2Note, gb_file)
+  return(GeneId2Ncdna, GeneId2Note)
 
 def parse_commandline():
   help_message = "Incorrect command you need to supply a gbk file \n python sortbyNcdna.py -sort data/NC_009930.gbk outputfile \n python sortbyNcdna.py -sort data/Azospirillum_B510_uid46085/NC_013860.gbk Azospirillum_B510_uid46085.txt\n python sortbyNcdna.py -search protein data/Azospirillum_B510_uid46085/NC_013860.gbk Azospirillum_B510_uid46085.txt" 
@@ -146,8 +183,8 @@ def parse_commandline():
     if sys.argv[1] == "-sort":
       gb_files = sys.argv[2:-1]
       outputfile = sys.argv[-1]
-      ncdna_sorted = sortall(gb_files)
-      printbyCommonsubstring(ncdna_sorted,outputfile)
+      GeneId2Ncdna, GeneId2Note = sortall(gb_files)
+      printbyCommonsubstring(GeneId2Ncdna, GeneId2Note,outputfile)
 #      print_sorted(ncdna_sorted,outputfile)
     else: 
       print(help_message)
@@ -155,4 +192,13 @@ def parse_commandline():
   else:
     print(help_message)
     return(0)
+
+
+
 parse_commandline()
+
+
+
+
+
+
