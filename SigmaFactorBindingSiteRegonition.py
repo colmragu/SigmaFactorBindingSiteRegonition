@@ -44,6 +44,7 @@ def sortbyNcdna(GeneId2Ncdna, GeneId2Note, gb_file):
       GeneId2Ncdna, GeneId2Note = addfeaturetodict(ncdna, GeneId2Ncdna, GeneId2Note, feature)
       ncdna_last= ncdna
     scan_pos = feature.location.end.position
+  print (len(GeneId2Ncdna))
   return(GeneId2Ncdna, GeneId2Note)
 
 def addfeaturetodict(ncdna,GeneId2Ncdna, GeneId2Note, feature):
@@ -77,7 +78,6 @@ def pad_gb_features(feature):
 
 def dictbyCommonsubstring(GeneId2Ncdna, GeneId2Note,commonsubstrings ,outputfile):
   genidByCommonsubstring = {}
-
   for gene in GeneId2Ncdna.keys():
     for element in GeneId2Ncdna[gene]:
       substring_match = [substring1 for substring1 in commonsubstrings if re.compile(substring1).search(element) is not None]    
@@ -87,7 +87,7 @@ def dictbyCommonsubstring(GeneId2Ncdna, GeneId2Note,commonsubstrings ,outputfile
         else:
           genidByCommonsubstring[gene]=[]
           genidByCommonsubstring[gene].append(substring)
-
+  print (len(genidByCommonsubstring.keys()))
   return(genidByCommonsubstring)
 
 def dictby2Commonsubstring(GeneId2Ncdna, GeneId2Note,commonsubstrings ,outputfile):
@@ -138,7 +138,7 @@ def findcommonsubstrings(ncdna_keys, minlen2, minoccurances):
   commonsubstrings = [element 
                       for ncdna_pair in ncdna_pairs
                       for element in ncdna_commonsubstrings(ncdna_pair)]
-  commonsubstrings = Counter(commonsubstrings) 
+  commonsubstrings = Counter(commonsubstrings)
   for k in reversed(sorted(commonsubstrings.keys(), key=commonsubstrings.__getitem__)):
     if commonsubstrings[k] >= minoccurances:
       mostcommonsubstrings.append(k)
@@ -149,14 +149,15 @@ def findcommonsubstrings(ncdna_keys, minlen2, minoccurances):
 
 def ncdna_commonsubstrings(key):
   matches =  [x for x in difflib.SequenceMatcher(None, key[0], key[1]).get_matching_blocks() if x[2]>minlen]
-  all_seq_paired = [sigmapinrowjoin( key[0][test_seq[0]:test_seq[0] + test_seq[2]] ,abs(test_seq2[2] - test_seq[0]) , key[0][test_seq2[0]:test_seq2[0] + test_seq2[2]]) 
+
+  all_seq_paired = [sigmapinrowjoin(key[0][test_seq[0]:test_seq[0] + test_seq[2]] ,abs(test_seq[0]+test_seq[2]-test_seq2[0]) , key[0][test_seq2[0]:test_seq2[0] + test_seq2[2]]) 
                     for x, test_seq in enumerate(matches) 
                     for test_seq2 in matches[x+1:-1]]
   return(all_seq_paired)
 
 def sigmapinrowjoin(sigma,  distance, pinrow):
-  return (".+".join([sigma, pinrow]))
-
+  return (".{%s}".join([sigma, pinrow]))%(distance)
+#  return (".+".join([sigma, pinrow]))
 def sortbycommonsubstring(ncdna, commonsubstrings):
   contains_substring=[0]*len(commonsubstrings)
   for i, substring in enumerate(commonsubstrings):
