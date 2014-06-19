@@ -156,8 +156,8 @@ def ncdna_commonsubstrings(key):
   return(all_seq_paired)
 
 def sigmapinrowjoin(sigma,  distance, pinrow):
-  return (".{%s}".join([sigma, pinrow]))%(distance)
-#  return (".+".join([sigma, pinrow]))
+#  return (".{%s}".join([sigma, pinrow]))%(distance)
+  return (".+".join([sigma, pinrow]))
 def sortbycommonsubstring(ncdna, commonsubstrings):
   contains_substring=[0]*len(commonsubstrings)
   for i, substring in enumerate(commonsubstrings):
