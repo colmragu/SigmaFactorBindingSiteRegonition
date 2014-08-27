@@ -49,10 +49,9 @@ def sortbyNcdna(GeneId2Ncdna, GeneId2Note, gb_file):
 
 def addfeaturetodict(ncdna,GeneId2Ncdna, GeneId2Note, feature):
 #  
-  GeneId = feature.qualifiers["db_xref"][0]
   if not "CDS" in feature.type:
     return(GeneId2Ncdna, GeneId2Note)
-
+  GeneId = feature.qualifiers["locus_tag"][0]
   if feature.qualifiers.has_key("product"):
     feature.qualifiers["note"]  = str(feature.qualifiers["note"]) +  feature.qualifiers["product"][0]
 
@@ -149,15 +148,15 @@ def findcommonsubstrings(ncdna_keys, minlen2, minoccurances):
 
 def ncdna_commonsubstrings(key):
   matches =  [x for x in difflib.SequenceMatcher(None, key[0], key[1]).get_matching_blocks() if x[2]>minlen]
-
+#  all_seq_paired = [key[0][test_seq[0]:test_seq[0]+test_seq[2]] for test_seq in matches]
   all_seq_paired = [sigmapinrowjoin(key[0][test_seq[0]:test_seq[0] + test_seq[2]] ,abs(test_seq[0]+test_seq[2]-test_seq2[0]) , key[0][test_seq2[0]:test_seq2[0] + test_seq2[2]]) 
                     for x, test_seq in enumerate(matches) 
-                    for test_seq2 in matches[x+1:-1]]
+                    for test_seq2 in matches[x+1:]]
   return(all_seq_paired)
 
 def sigmapinrowjoin(sigma,  distance, pinrow):
-#  return (".{%s}".join([sigma, pinrow]))%(distance)
-  return (".+".join([sigma, pinrow]))
+  return (".{%s}".join([sigma, pinrow]))%(distance)
+#  return (".+".join([sigma, pinrow]))
 def sortbycommonsubstring(ncdna, commonsubstrings):
   contains_substring=[0]*len(commonsubstrings)
   for i, substring in enumerate(commonsubstrings):
@@ -167,7 +166,7 @@ def sortbycommonsubstring(ncdna, commonsubstrings):
 
 def print_element(ncdna_sort,ncdna, f):
   for gene,info in sorted(ncdna_sort[ncdna].items(), key=lambda x:x[1][1]):
-      print (info, file=f)
+      print (ncdna,gene,info,file=f)
   print ("", file=f)
 
 def sortall(gb_files): 
